@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interfinity</title>
+<style>
+:root{--bg:#f4f5f7;--panel:#fff;--fg:#1d2330;--mut:#6a7385;--line:#d9dde6;--acc:#00a37a;--acc2:#007a5b;--warn:#c0392b;--tile:#4a90d9;--tile2:#e5a13a;--bed:#eef0f4}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1e25;--panel:#252932;--fg:#e8ebf2;--mut:#98a1b5;--line:#39404f;--acc:#1fc59a;--acc2:#15a07c;--warn:#ff7b6b;--tile:#5aa2ea;--tile2:#e8b04f;--bed:#20242c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:12px;padding:12px;height:100vh}
+@media (max-width:760px){.wrap{grid-template-columns:1fr;height:auto}}
+.col{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+h1{font-size:15px;margin:0 0 2px}h2{font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+.sub{color:var(--mut);font-size:12px}
+.tabs{display:flex;gap:4px;margin-bottom:8px}
+.tabs button{flex:1}
+button{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 9px;cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button.primary:hover{background:var(--acc2)}
+button:disabled{opacity:.45;cursor:not-allowed}
+input[type=number]{width:64px;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:3px 5px}
+input[type=checkbox]{accent-color:var(--acc)}
+.row{display:flex;align-items:center;gap:8px;margin:4px 0;flex-wrap:wrap}
+select{font:inherit;font-size:12px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:3px 2px;min-width:0;width:100%}
+.row label{min-width:120px;color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.tile-row{display:grid;grid-template-columns:.6fr .6fr .6fr .8fr 2.2fr auto;gap:6px;align-items:center;margin:3px 0}
+.tile-row .x{padding:2px 7px}
+.hint{font-size:11.5px;color:var(--mut);margin-top:4px}
+.warn{color:var(--warn)}
+#stage{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;overflow:auto;flex:1;min-height:260px}
+.plate{margin-bottom:12px}
+.plate-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap}
+svg{width:100%;height:auto;max-height:46vh;display:block}
+#status{font-size:12px;min-height:18px}
+.bar{display:flex;gap:6px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col">
+    <div class="card">
+      <h1>Interfinity</h1>
+      <div class="sub">Tile modulari a incastro, pensati per la stampa in <b>vase mode</b> (Spiralize outer contour, 0 strati superiori, 0 infill, 1 parete). Altezza per tile e divisori a modulo 5&nbsp;mm.</div>
+    </div>
+
+    <div class="card">
+      <div class="tabs">
+        <button id="tabList" class="on">Elenco tile</button>
+        <button id="tabArea">Riempi area</button>
+      </div>
+
+      <div id="paneList">
+        <div class="chips" id="presets"></div>
+        <div class="tile-row sub"><span>Largh.</span><span>Prof.</span><span>Qtà</span><span>Altezza mm</span><span>Divisori</span><span></span></div>
+        <div id="tileRows"></div>
+        <button id="addRow" style="margin-top:6px">+ Tile personalizzato</button>
+        <div class="hint">Unità = un passo della griglia (50 mm di default). Larghezza = lungo X, profondità = lungo Y (come nel tuo 3x2 = 3 largo, 2 profondo).</div>
+      </div>
+
+      <div id="paneArea" hidden>
+        <div class="row"><label>Area totale</label><input id="aA" type="number" min="1" step="1" value="6"> × <input id="aB" type="number" min="1" step="1" value="4"> unità</div>
+        <div class="row"><label>Tile max</label><input id="aMW" type="number" min="1" step="1" value="3"> × <input id="aMD" type="number" min="1" step="1" value="3"> unità</div>
+        <div class="row"><label>Sfalsa le file</label><input id="aSt" type="checkbox" checked><span class="sub">evita giunzioni a croce</span></div>
+        <div class="row"><label>Altezza mm</label><input id="aH" type="number" min="1" step="1" placeholder="auto"><label style="min-width:0">Divisori</label><select id="aDv"><option value="none">nessuno</option><option value="y">verticali (lungo Y)</option><option value="x">orizzontali (lungo X)</option></select></div>
+        <div class="hint" id="areaInfo"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Parametri</h2>
+      <div class="row"><label>Altezza (Z)</label><input id="pH" type="number" step="1" min="1"> mm</div>
+      <div class="row"><label>Passo</label><input id="pP" type="number" step="1" min="10"> mm</div>
+      <div class="row"><label>Raggio sporgenza R</label><input id="pR" type="number" step="0.1" min="0.5"> mm</div>
+      <div class="row"><label>Gioco CL</label><input id="pC" type="number" step="0.05" min="0"> mm <span class="sub" id="pSock"></span></div>
+      <div class="row"><label>Distanza incastri</label><input id="pS" type="number" step="1" min="5"> mm</div>
+      <div class="row"><label>Segmenti/arco</label><input id="pG" type="number" step="2" min="6" max="64"></div>
+      <h2 style="margin-top:10px">Divisori interni</h2>
+      <div class="row"><label>Ogni (multiplo di 5)</label><input id="dE" type="number" step="5" min="5"> mm</div>
+      <div class="row"><label>Fessura (2 pareti)</label><input id="dG" type="number" step="0.05" min="0.1"> mm</div>
+      <div class="row"><label>Passaggio libero</label><input id="dP" type="number" step="5" min="5"> mm</div>
+      <div class="hint">Vase mode = un solo contorno continuo per strato: ogni divisorio è una fessura sottile che parte dal bordo e si ferma prima del lato opposto, alternando i lati (serpentina). Una griglia chiusa di scomparti non è stampabile in vase mode. La fessura va tenuta ≥ 0,1 mm, altrimenti Orca la richiude (raggio di chiusura delle fessure).</div>
+      <h2 style="margin-top:10px">Piatto</h2>
+      <div class="row"><label>Piatto X × Y</label><input id="bX" type="number" min="20"> × <input id="bY" type="number" min="20"> mm <button id="bedBtn" title="Leggi dalla stampante attiva">Da stampante</button></div>
+      <div class="row"><label>Margine / distanza</label><input id="bM" type="number" step="1" min="0"> / <input id="bG" type="number" step="1" min="0"> mm</div>
+      <div class="bar" style="margin-top:6px"><button id="reset">Ripristina predefiniti</button></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div id="summary" class="card"></div>
+    <div id="stage"></div>
+    <div id="status" class="sub"></div>
+  </div>
+</div>
+
+<script>
+/*__GEOMETRY__*/
+</script>
+<script>
+(function () {
+  "use strict";
+  var G = window.Interfinity;
+  var ORCA = (window.orca && typeof window.orca.postMessage === "function") ? window.orca : null;
+  var PRESETS = [[1,1],[2,1],[2,2],[3,2],[3,3],[4,1],[4,2]];
+  var DEF = {
+    mode: "list",
+    tiles: [{w:2,d:1,q:2,h:0,dv:"none"},{w:1,d:1,q:4,h:0,dv:"none"}],
+    area: {A:6,B:4,mw:3,md:3,stagger:true,h:0,dv:"none"},
+    p: {height:50,pitch:50,knobR:3,clearance:0.5,spacing:25,seg:24,divEvery:25,divGap:0.2,divPassage:10},
+    bed: {x:256,y:256,margin:5,gap:4}
+  };
+  var S = JSON.parse(JSON.stringify(DEF));
+  var $ = function (id) { return document.getElementById(id); };
+  var layout = null, chunkWait = null, pendingSend = null;
+
+  /* ---------- host messaging ---------- */
+  function post(msg) {
+    if (!ORCA) { setStatus("Fuori da OrcaSlicer: anteprima e salvataggio non disponibili."); return false; }
+    ORCA.postMessage(msg); return true;
+  }
+  function onHost(raw) {
+    var m = raw; if (typeof raw === "string") { try { m = JSON.parse(raw); } catch (e) { return; } }
+    if (m && m.data && !m.type) m = m.data;
+    if (!m || !m.type) return;
+    switch (m.type) {
+      case "bed": applyBed(m); break;
+      case "bed_failed": if (m.settings) loadSettings(m.settings); setStatus("Piatto non letto (" + m.error + "): uso i valori manuali.", true); break;
+      case "settings": if (m.settings) loadSettings(m.settings); break;
+      case "chunk_ack": if (chunkWait) { var f = chunkWait; chunkWait = null; f(); } break;
+      case "save_failed": chunkWait = null; setStatus("Errore: " + m.error, true); busy(false); break;
+      case "saved": if (!m.pending) { setStatus("Salvato: " + m.path); busy(false); } else setStatus("Salvato, invio a OrcaSlicer…"); break;
+      case "placed":
+        setStatus(m.placed ? "Inviato al piatto di OrcaSlicer ✓  (" + m.path + ")" : "File salvato in " + m.path + " ma non caricato: " + m.place_error, !m.placed);
+        busy(false); break;
+    }
+  }
+  if (window.addEventListener) window.addEventListener("message", function (e) { onHost(e.data); });
+  if (ORCA && ORCA.onMessage) { try { ORCA.onMessage(onHost); } catch (e) {} }
+  window.__interfinityHost = onHost;     // some hosts call this directly
+
+  function setStatus(t, bad) { var s = $("status"); s.textContent = t; s.className = bad ? "warn" : "sub"; }
+  function busy(b) { document.querySelectorAll("[data-send]").forEach(function (x) { x.disabled = b; }); }
+
+  /* ---------- state <-> form ---------- */
+  function applyBed(m) {
+    if (m.settings) loadSettings(m.settings, true);
+    if (m.x && m.y) { S.bed.x = m.x; S.bed.y = m.y; fillForm(); update(); }
+    setStatus("Piatto: " + m.x + " × " + m.y + " mm (" + (m.printer || "stampante") + ")");
+  }
+  function loadSettings(s, keepBed) {
+    try {
+      if (s.tiles) S.tiles = s.tiles; if (s.area) S.area = s.area; if (s.p) S.p = s.p; if (s.mode) S.mode = s.mode;
+      if (s.bed && !keepBed) S.bed = s.bed; else if (s.bed) { S.bed.margin = s.bed.margin; S.bed.gap = s.bed.gap; }
+    } catch (e) {}
+    fillForm(); update();
+  }
+  var saveTimer = null;
+  function saveSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(function () { post({type: "save_settings", settings: S}); }, 400); }
+
+  function fillForm() {
+    $("pH").value = S.p.height; $("pP").value = S.p.pitch; $("pR").value = S.p.knobR; $("pC").value = S.p.clearance;
+    $("dE").value = S.p.divEvery; $("dG").value = S.p.divGap; $("dP").value = S.p.divPassage; $("aH").value = S.area.h || ""; $("aDv").value = S.area.dv || "none"; $("pS").value = S.p.spacing; $("pG").value = S.p.seg;
+    $("bX").value = S.bed.x; $("bY").value = S.bed.y; $("bM").value = S.bed.margin; $("bG").value = S.bed.gap;
+    $("aA").value = S.area.A; $("aB").value = S.area.B; $("aMW").value = S.area.mw; $("aMD").value = S.area.md; $("aSt").checked = !!S.area.stagger;
+    $("tabList").className = S.mode === "list" ? "on" : ""; $("tabArea").className = S.mode === "area" ? "on" : "";
+    $("paneList").hidden = S.mode !== "list"; $("paneArea").hidden = S.mode !== "area";
+    renderRows();
+  }
+  function num(id, lo, hi) { var v = parseFloat($(id).value); if (!isFinite(v)) v = lo; return Math.min(hi == null ? 1e9 : hi, Math.max(lo, v)); }
+  function readForm() {
+    S.p.height = num("pH", 1); S.p.pitch = num("pP", 10); S.p.knobR = num("pR", 0.5); S.p.clearance = num("pC", 0);
+    S.p.spacing = num("pS", 5); S.p.divEvery = Math.max(5, Math.round(num("dE", 5) / 5) * 5); S.p.divGap = num("dG", 0.1); S.p.divPassage = num("dP", 5); S.area.h = Math.round(num("aH", 0)); S.area.dv = $("aDv").value; S.p.seg = Math.round(num("pG", 6, 64));
+    S.bed.x = num("bX", 20); S.bed.y = num("bY", 20); S.bed.margin = num("bM", 0); S.bed.gap = num("bG", 0);
+    S.area.A = Math.round(num("aA", 1)); S.area.B = Math.round(num("aB", 1));
+    S.area.mw = Math.round(num("aMW", 1)); S.area.md = Math.round(num("aMD", 1)); S.area.stagger = $("aSt").checked;
+  }
+
+  /* ---------- tile list ---------- */
+  function renderRows() {
+    var box = $("tileRows"); box.innerHTML = "";
+    S.tiles.forEach(function (t, i) {
+      var r = document.createElement("div"); r.className = "tile-row";
+      ["w", "d", "q", "h"].forEach(function (k) {
+        var inp = document.createElement("input"); inp.type = "number"; inp.min = k === "h" ? 0 : 1; inp.step = 1; inp.value = (k === "h" && !t.h) ? "" : t[k];
+        if (k === "h") inp.placeholder = S.p.height;
+        inp.addEventListener("input", function () {
+          var v = Math.round(parseFloat(inp.value));
+          t[k] = k === "h" ? (v > 0 ? v : 0) : Math.max(1, v || 1); update(true);
+        });
+        r.appendChild(inp);
+      });
+      var sel = document.createElement("select");
+      [["none", "—"], ["y", "Y ｜"], ["x", "X ―"]].forEach(function (o) {
+        var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op);
+      });
+      sel.value = t.dv || "none";
+      sel.addEventListener("change", function () { t.dv = sel.value; update(true); });
+      r.appendChild(sel);
+      var x = document.createElement("button"); x.className = "x"; x.textContent = "✕"; x.title = "Rimuovi";
+      x.addEventListener("click", function () { S.tiles.splice(i, 1); renderRows(); update(); });
+      r.appendChild(x); box.appendChild(r);
+    });
+  }
+  PRESETS.forEach(function (p) {
+    var b = document.createElement("button"); b.textContent = p[0] + "×" + p[1]; b.title = "Aggiungi " + p[0] + "×" + p[1];
+    b.addEventListener("click", function () {
+      var ex = S.tiles.filter(function (t) { return t.w === p[0] && t.d === p[1]; })[0];
+      if (ex) ex.q++; else S.tiles.push({w: p[0], d: p[1], q: 1, h: 0, dv: "none"});
+      renderRows(); update();
+    });
+    $("presets").appendChild(b);
+  });
+  $("addRow").addEventListener("click", function () { S.tiles.push({w: 2, d: 2, q: 1, h: 0, dv: "none"}); renderRows(); update(); });
+  $("tabList").addEventListener("click", function () { S.mode = "list"; fillForm(); update(); });
+  $("tabArea").addEventListener("click", function () { S.mode = "area"; fillForm(); update(); });
+  ["pH","pP","pR","pC","pS","pG","dE","dG","dP","aH","aDv","bX","bY","bM","bG","aA","aB","aMW","aMD","aSt"].forEach(function (id) {
+    $(id).addEventListener("input", function () { readForm(); update(true); });
+  });
+  $("reset").addEventListener("click", function () { S = JSON.parse(JSON.stringify(DEF)); fillForm(); update(); post({type: "reset_settings"}); post({type: "get_bed"}); });
+  $("bedBtn").addEventListener("click", function () { post({type: "get_bed"}); });
+
+  /* ---------- layout ---------- */
+  function expandTiles() {
+    var out = [];
+    if (S.mode === "list") {
+      S.tiles.forEach(function (t) { for (var i = 0; i < t.q; i++) out.push({w: t.w, d: t.d, h: t.h, dv: t.dv}); });
+    } else {
+      G.splitArea(S.area.A, S.area.B, S.area.mw, S.area.md, S.area.stagger).forEach(function (t) { out.push({w: t.w, d: t.d, h: S.area.h, dv: S.area.dv}); });
+    }
+    return out;
+  }
+  var meshCache = {};
+  function pFor(t) {
+    var o = {}; for (var k in S.p) o[k] = S.p[k];
+    o.height = t.h || S.p.height; o.divDir = t.dv || "none"; return o;
+  }
+  function meshFor(t) {
+    var p = pFor(t), key = [t.w, t.d, p.height, p.pitch, p.knobR, p.clearance, p.spacing, p.seg, p.divDir, p.divEvery, p.divGap, p.divPassage].join("|");
+    if (!meshCache[key]) { if (Object.keys(meshCache).length > 60) meshCache = {}; meshCache[key] = G.tileMesh(t.w, t.d, p); }
+    return meshCache[key];
+  }
+
+  function update(soft) {
+    $("pSock").textContent = "→ raggio sede " + (+(S.p.knobR + S.p.clearance).toFixed(3)) + " mm";
+    var tiles = expandTiles();
+    var res = G.pack(tiles, {x: S.bed.x, y: S.bed.y}, S.p, S.bed.margin, S.bed.gap);
+    layout = res;
+    render(tiles, res);
+    if (S.mode === "area") {
+      $("areaInfo").textContent = tiles.length + " tile: " + summarize(tiles) + " — totale " + (S.area.A * S.p.pitch) + " × " + (S.area.B * S.p.pitch) + " mm assemblati.";
+    }
+    saveSoon();
+  }
+  function summarize(tiles) {
+    var c = {}; tiles.forEach(function (t) { var k = t.w + "×" + t.d + ((t.h && t.h !== S.p.height) ? " h" + t.h : "") + ((t.dv && t.dv !== "none") ? " ÷" + t.dv.toUpperCase() : ""); c[k] = (c[k] || 0) + 1; });
+    return Object.keys(c).map(function (k) { return c[k] + "× " + k; }).join(", ") || "nessuno";
+  }
+
+  var NS = "http://www.w3.org/2000/svg";
+  function render(tiles, res) {
+    var sum = $("summary");
+    var warn = [];
+    tiles.forEach(function (t) {
+      if (t.dv && t.dv !== "none") {
+        var len = (t.dv === "y" ? t.w : t.d) * S.p.pitch, r = G.dividerPositions(len, S.p);
+        var span = (t.dv === "y" ? t.d : t.w) * S.p.pitch;
+        var k = t.w + "×" + t.d + " divisori " + t.dv.toUpperCase();
+        if (span - S.p.divPassage < 5) warn.push(k + ": tile troppo corto, nessun divisorio");
+        else if (!r.pos.length) warn.push(k + ": nessuna posizione valida");
+        else if (r.skipped.length) warn.push(k + ": saltate " + r.skipped.join(", ") + " mm (cadrebbero su un incastro)");
+      }
+    });
+    warn = warn.filter(function (x, i) { return warn.indexOf(x) === i; });
+    sum.innerHTML = "<b>" + tiles.length + " tile</b> · " + summarize(tiles) + " · " + res.plates.length + " piatto/i" +
+      (res.oversize.length ? "<br><span class='warn'>" + res.oversize.length + " tile non entrano nel piatto (" + S.bed.x + "×" + S.bed.y + " mm): riduci le dimensioni o la dimensione max.</span>" : "") +
+      (warn.length ? "<br><span class='warn'>" + warn.join("<br>") + "</span>" : "");
+    var stage = $("stage"); stage.innerHTML = "";
+    res.plates.forEach(function (items, pi) {
+      var box = document.createElement("div"); box.className = "plate";
+      var h = document.createElement("div"); h.className = "plate-h";
+      h.innerHTML = "<b>Piatto " + (pi + 1) + "</b><span class='sub'>" + items.length + " tile</span>";
+      var bar = document.createElement("span"); bar.className = "bar";
+      var b1 = mk("Invia a OrcaSlicer", "primary", function () { send(pi, true); });
+      var b2 = mk("Salva STL", "", function () { send(pi, false); });
+      bar.appendChild(b1); bar.appendChild(b2); h.appendChild(bar); box.appendChild(h);
+      var svg = document.createElementNS(NS, "svg");
+      var M = 4, vw = S.bed.x + 2 * M, vh = S.bed.y + 2 * M;
+      svg.setAttribute("viewBox", [-M, -M, vw, vh].join(" "));
+      var bed = document.createElementNS(NS, "rect");
+      bed.setAttribute("x", 0); bed.setAttribute("y", 0); bed.setAttribute("width", S.bed.x); bed.setAttribute("height", S.bed.y);
+      bed.setAttribute("fill", "var(--bed)"); bed.setAttribute("stroke", "var(--line)"); svg.appendChild(bed);
+      items.forEach(function (it, k) {
+        var o = G.tileOutline(it.tile.w, it.tile.d, pFor(it.tile));
+        var d = o.map(function (q, i) { return (i ? "L" : "M") + (it.x + q[0]).toFixed(2) + " " + (S.bed.y - (it.y + q[1])).toFixed(2); }).join("") + "Z";
+        var path = document.createElementNS(NS, "path");
+        path.setAttribute("d", d); path.setAttribute("fill", (it.tile.w + it.tile.d) % 2 ? "var(--tile)" : "var(--tile2)");
+        path.setAttribute("fill-opacity", ".8"); path.setAttribute("stroke", "var(--fg)"); path.setAttribute("stroke-width", ".5");
+        svg.appendChild(path);
+        var f = G.footprint(it.tile.w, it.tile.d, S.p), tx = document.createElementNS(NS, "text");
+        tx.setAttribute("x", it.x + (f.w - S.p.knobR) / 2); tx.setAttribute("y", S.bed.y - (it.y + (f.d - S.p.knobR) / 2) + 3);
+        tx.setAttribute("text-anchor", "middle"); tx.setAttribute("font-size", Math.min(12, Math.max(6, S.p.pitch * 0.28)));
+        tx.setAttribute("fill", "#fff"); tx.setAttribute("style", "paint-order:stroke;stroke:#0008;stroke-width:1.5px");
+        tx.textContent = it.tile.w + "×" + it.tile.d; svg.appendChild(tx);
+      });
+      box.appendChild(svg); stage.appendChild(box);
+    });
+    if (!res.plates.length) stage.innerHTML = "<div class='sub'>Aggiungi almeno un tile.</div>";
+  }
+  function mk(label, cls, fn) {
+    var b = document.createElement("button"); b.textContent = label; b.className = cls; b.setAttribute("data-send", "1");
+    b.addEventListener("click", fn); return b;
+  }
+
+  /* ---------- export ---------- */
+  function plateMesh(pi) {
+    return G.merge(layout.plates[pi].map(function (it) { return {mesh: meshFor(it.tile), dx: it.x, dy: it.y}; }));
+  }
+  function b64(bytes) {
+    var s = "", step = 0x6000;
+    for (var i = 0; i < bytes.length; i += step) s += String.fromCharCode.apply(null, bytes.subarray(i, i + step));
+    return btoa(s);
+  }
+  function fileName(pi) {
+    var tiles = layout.plates[pi].map(function (i) { return i.tile; });
+    var c = {}; tiles.forEach(function (t) { var k = t.w + "x" + t.d + "h" + (t.h || S.p.height) + (t.dv && t.dv !== "none" ? "div" + t.dv : ""); c[k] = (c[k] || 0) + 1; });
+    var core = Object.keys(c).slice(0, 4).map(function (k) { return c[k] + "pz-" + k; }).join("_");
+    return "interfinity_" + core + "_p" + (pi + 1) + ".stl";
+  }
+  function send(pi, place) {
+    if (!ORCA) { setStatus("Disponibile solo dentro OrcaSlicer.", true); return; }
+    var stl; try { stl = G.toSTL(plateMesh(pi), true); } catch (e) { setStatus("Errore geometria: " + e.message, true); return; }
+    busy(true); setStatus("Invio " + (stl.length / 1024).toFixed(0) + " KB…");
+    var data = b64(stl), CH = 32768, n = Math.ceil(data.length / CH), idx = 0;
+    var next = function () {
+      if (idx >= n) { chunkWait = null; post({type: "save_file_finish"}); return; }
+      var i = idx++; chunkWait = next;
+      post({type: "save_file_chunk", index: i, chunk: data.substr(i * CH, CH)});
+    };
+    chunkWait = next;                       // first ack answers save_file_start
+    post({type: "save_file_start", name: fileName(pi), place: place, total_bytes: stl.length});
+  }
+
+  fillForm(); update();
+  post({type: "get_bed"});          // reply carries saved settings too
+})();
+</script>
+</body>
+</html>

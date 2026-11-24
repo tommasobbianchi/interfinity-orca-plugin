@@ -1,0 +1,47 @@
+name: Publish to OrcaCloud
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  PLUGIN_FILES: "dist/interfinity_plugin_linux_x86_64.py dist/interfinity_plugin_linux_arm64.py dist/interfinity_plugin_win_x86_64.py dist/interfinity_plugin_win_arm64.py dist/interfinity_plugin_macosx_arm64.py dist/interfinity_plugin_macosx_x86_64.py"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build plugin targets
+        run: |
+          rm -rf dist
+          python3 build_orca_plugin.py --all-targets
+      - name: Publish release to OrcaCloud
+        run: |
+          set -euo pipefail
+          oidc_token="$(curl -sS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=orcacloud" | jq -r .value)"
+          version="${GITHUB_REF_NAME#v}"
+          changelog="$(jq -r '.release.body // ""' "$GITHUB_EVENT_PATH" | head -c 4000)"
+          metadata="$(jq -cn --arg version "$version" --arg changelog "$changelog" \
+            '{version: $version} + (if $changelog == "" then {} else {changelog: $changelog} end)')"
+          args=(-F "metadata=$metadata")
+          shopt -s nullglob
+          for file in $PLUGIN_FILES; do
+            echo "Attaching plugin file: $file"
+            args+=(-F "files=@$file")
+          done
+          [ "${#args[@]}" -gt 1 ] || { echo "No plugin files matched" >&2; exit 1; }
+          status="$(curl -sS -o response.json -w '%{http_code}' \
+            -H "Authorization: Bearer $oidc_token" "${args[@]}" \
+            https://api.orcaslicer.com/api/v1/plugin-publish/releases)"
+          cat response.json; echo
+          [ "$status" = "201" ]
