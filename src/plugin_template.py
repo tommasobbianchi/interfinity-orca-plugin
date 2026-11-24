@@ -4,12 +4,12 @@
 # dependencies = []
 #
 # [tool.orcaslicer.plugin]
-# name = "Interfinity Tile Generator"
-# description = "Genera i tile modulari Interfinity (incastri tondi ogni 25 mm) in qualsiasi misura WxD, riempie un'area, impagina sul piatto e invia l'STL a OrcaSlicer."
+# name = "Interfinity - modular light Drawer Trays"
+# description = "Modular interlocking drawer trays in any size, with per-tray heights and 5 mm-module dividers, printable in vase mode and sent straight to the build plate."
 # author = "tommasobbianchi"
 # version = "0.1.0"
 # ///
-"""Interfinity tile generator for OrcaSlicer.
+"""Interfinity drawer-tray generator for OrcaSlicer.
 
 Registers a Pages capability (a tab in the main window) and a Script
 capability (the same panel as a floating window, from the Plugins dialog).
@@ -448,7 +448,7 @@ class InterfinityWindow(orca.script.ScriptPluginCapabilityBase, _Core):
         self._win = None
 
     def get_name(self):
-        return "Interfinity Tile Generator"
+        return "Interfinity Drawer Trays"
 
     def execute(self):
         if self._win is not None:
@@ -459,7 +459,7 @@ class InterfinityWindow(orca.script.ScriptPluginCapabilityBase, _Core):
                 self._win = None
         try:
             self._win = orca.host.ui.create_window(
-                html=PAGE, title="Interfinity Tile Generator",
+                html=PAGE, title="Interfinity Drawer Trays",
                 on_message=self._on_message, on_close=self._on_close)
         except Exception as exc:
             return orca.ExecutionResult.failure(
